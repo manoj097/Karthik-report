@@ -1,0 +1,198 @@
+#include<pic.h>
+#include<string.h>
+#include<stdio.h>
+#define lcd PORTD
+#define _XTAL_FREQ 10000000
+#define rs RE2
+#define rw RE1
+#define en RE0
+#define ir RB0
+#define rf RC1
+
+int x1,x2,x3,x4,x5;
+ void delay2()
+{
+   unsigned int i,j;
+   for(i=0;i<555;i++);
+ }
+
+void delay()
+ {
+ 
+   unsigned char i;
+   for(i=0;i<255;i++);
+}
+
+void delay1()
+{
+   unsigned int i,j;
+   for(i=0;i<535;i++);
+ }
+
+void delay3(unsigned int a)
+{
+unsigned int i,j;
+for(i=0;i<a;i++)
+for(j=0;j<355;j++);
+}
+
+void cmd(unsigned char a )
+ {
+    lcd=a; 
+    rs=0;
+    en=1;
+__delay_ms(5);
+    en=0;
+    
+     }
+
+void data(unsigned char b)
+{
+    lcd=b;
+    rs=1;
+    en=1;
+__delay_ms(5);
+    en=0;
+
+}
+
+void lcd_ini()
+{
+cmd(0x38);
+cmd(0x0c);
+cmd(0x01);
+cmd(0x06);
+cmd(0x80);
+}
+
+void group(unsigned char *c)
+{
+int i=0;
+while(c[i]!='\0')
+{
+data(c[i]);
+i++;
+}
+}
+void transmit(unsigned char a)
+{
+TXREG=a;
+while(!TXIF);
+TXIF=0;
+}
+
+void group_transmit(unsigned char *c)
+{
+int i=0;
+while(c[i]!='\0')
+{
+transmit(c[i]);
+i++;
+}
+}
+
+void main()
+{ 
+char z;
+TXSTA=0x20;
+RCSTA=0x90;
+SPBRG=15;
+//int i,j,k,x1,x2,x3,x4,x5;
+char m1[3];char m2[3];char m3[3];char m4[3];char m5[3];
+int mems=0, voltage=0;
+ADCON1=0x82; 
+TRISD=TRISE=0x00;
+TRISB0=1;
+TRISC0=0;
+RC0=1;
+RB0=0;
+lcd_ini();
+cmd(0x81);
+group("Railway  Track");
+cmd(0xC2);
+group("  MONITORING  ");
+
+__delay_ms(3000);
+cmd(0x01);
+
+while(1)
+	{
+cmd(0x80);
+group("M");
+transmit("M");
+                   ADCON0 = 0x81;	                        
+			delay(500);
+			GO_DONE= 1;
+			while(GO_DONE ==1)
+			continue;
+			mems = ((ADRESH * 256) + (ADRESL));
+	            sprintf(m2,"%2d",mems);
+group(m2);
+transmit(m2);
+cmd(0x84);
+group("C");
+transmit("C");
+			 if(ir == 1)
+			 {
+			            data('1');
+			   }
+			 else  if(ir == 0)
+			{
+			            data('0');
+			}
+cmd(0x86);
+group("V");
+transmit("V");
+			ADCON0 = 0x89;	               // voltage
+			delay(500);
+			GO_DONE= 1;
+			while(GO_DONE ==1)
+			continue;
+			voltage = ((ADRESH * 256) + (ADRESL));
+voltage=(0.004887*voltage*5);
+			//x4=x4/2;
+			sprintf(m4,"%2d",voltage);
+
+cmd(0x88);
+group(m4);
+transmit(m4);
+//cmd(0x8a);
+//group("F");
+cmd(0xc0);
+if(mems>400)
+{
+             group("Track Displacement..");
+             group_transmit("Track displaced..");
+transmit('A');
+             RC0=0;
+             __delay_ms(1000);
+}
+else if(ir == 1)
+{
+            group("Crack Detcted..");
+            group_transmit("Crack Detcted..");
+transmit('A');
+            RC0=0;
+           __delay_ms(1000);;
+ }
+
+else if(voltage<12)
+{
+            group("Continuity break..");
+            group_transmit("Continuity break..");
+transmit('A');
+            RC0=0;
+           __delay_ms(1000);;
+}
+else
+{
+group("                ");
+RC0=1;
+}
+delay1();delay1();delay1();delay1();delay3(1);
+delay1();delay1();delay1();delay1();delay3(1);
+
+
+
+} 
+}
